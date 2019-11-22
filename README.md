@@ -1,1 +1,40 @@
-# JenkinsUnityBuildTest
+# JenkinsUnityBuild
+
+# 介绍
+> JenkinsUnityBuild 是一套基于Jenkins的Unity3d自动打包框架，Unity代码工程基于Unity2018，支持的特性有
+- 参数化构建
+- 部署多平台支持（可搭建在Windows或MacOS上）
+- 打包多平台支持（Windows、Android、iOS），可扩展
+
+# 示例
+![使用示例](Images/jenkinsBuild.png)
+
+# 部署
+
+1. 下载jenkins.war,并使用 java -jar jenkins.war启动jenkins，并安装以下插件
+    - Unity3d plugin
+    - Build Name and Description Setter
+    - Version Number
+    - Extended Choice Parameter
+    - Environment Injector Plugin
+
+    > 提示如果是部署在Windows，需要安装Git基础版，把Git安装目录下的bin目录添加到环境变量中。因为在Windows上用到了shell脚本，环境变量中需要sh.exe来执行shell脚本，Git的bin目录下带了一份
+
+2. 配置Unity3d的路径
+    - 在 Manage Jenkins -> Global Tool Configuration -> unity3d 下配置已经装好的Unity目录，目录配置到Editor目录的父目录就可以了，不是Unity.exe所在的目录
+
+3. git clone 本项目到本地路径中
+
+4. 配置Jenkins项目
+    - 新建一个自由风格的Jenkins项目，记住命令项目名
+    - 找到路径.jenkins/jobs/项目名称/config.xml的文件
+    > .jenkins在MacOS上位的目录在home目录下即~/.jenkins,Windows的.jenkins目录位置为C:\Users\用户名\.jenkins 下
+    - 使用本项目中根目录下的config.xml替换上述文件，并重启jenkins
+
+5. 启动打包，输入参数，确认。
+    - 在jenkins中打开项目选择 Build with Parameters
+    - 输入projectPath为本项目所在的本地路径
+    - 输入outputPath，打包输出的目标路径
+    - 选择可选参数
+    - 开始构建
+    - 可以点击Build History，选择左边面板中的控制台输出查看构建过程中的日志

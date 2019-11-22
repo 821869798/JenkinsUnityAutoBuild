@@ -1,0 +1,167 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>游戏build</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>projectPath</name>
+          <description>打包项目所在的目录</description>
+          <defaultValue>G:\program2019\unity\JenkinsUnityBuildTest</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>outputPath</name>
+          <description>打包的输出目录</description>
+          <defaultValue>G:\program2019\unity\testout</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition plugin="extended-choice-parameter@0.78">
+          <name>buildPlatform</name>
+          <description>选择打包平台</description>
+          <quoteValue>false</quoteValue>
+          <saveJSONParameterToFile>false</saveJSONParameterToFile>
+          <visibleItemCount>3</visibleItemCount>
+          <type>PT_RADIO</type>
+          <value>0,1,2</value>
+          <defaultValue>0</defaultValue>
+          <multiSelectDelimiter>,</multiSelectDelimiter>
+          <descriptionPropertyValue>Windows64,Android,iOS</descriptionPropertyValue>
+          <projectName>p3</projectName>
+        </com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition>
+        <com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition plugin="extended-choice-parameter@0.78">
+          <name>buildMode</name>
+          <description>选择打包模式，如果资源（lua代码也是资源，C#代码不是）没变动，可以选择之后的几项</description>
+          <quoteValue>false</quoteValue>
+          <saveJSONParameterToFile>false</saveJSONParameterToFile>
+          <visibleItemCount>3</visibleItemCount>
+          <type>PT_RADIO</type>
+          <value>0,1,2</value>
+          <defaultValue>0</defaultValue>
+          <multiSelectDelimiter>,</multiSelectDelimiter>
+          <descriptionPropertyValue>全量打包,不打包AssetBundle，直接Build,只重新编译C#代码（不包括lua），不打AssetBundle和场景</descriptionPropertyValue>
+          <projectName>p3</projectName>
+        </com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>enableUnityDevelopment</name>
+          <description>开启unity的developmentbuild</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>enableExportProject</name>
+          <description>导出额外的工程（Android），iOS默认开启不需要选</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>enableGameDevelopment</name>
+          <description>Game的开发者模式,指代码的逻辑是开发者模式</description>
+          <defaultValue>true</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>echo &quot;Build Start......&quot;
+
+#清空上次环境变量的文件
+:&gt; ${WORKSPACE}/env.properties
+
+echo -e &quot;\e[34m buildPlatform:${buildPlatform} \e[0m&quot;
+
+echo -e &quot;\e[34m projectPath:${projectPath} \e[0m&quot;
+
+echo -e &quot;\e[34m outputPath:${outputPath} \e[0m&quot;
+
+echo -e &quot;\e[34m buildVersionName:${buildVersionName} \e[0m&quot;
+
+echo -e &quot;\e[34m buildMode:${buildMode} \e[0m&quot;
+
+echo -e &quot;\e[34m enableUnityDevelopment:${enableUnityDevelopment} \e[0m&quot;
+
+echo -e &quot;\e[34m enableExportProject:${enableExportProject} \e[0m&quot;
+
+echo -e &quot;\e[34m enableGameDevelopment:${enableGameDevelopment} \e[0m&quot;
+
+#在Unity中执行的函数
+buildMethod=&quot;AutoBuild.AutoBuildEntry.&quot;
+#打包的输出路径
+finalOutputPath=&quot;${outputPath}&quot;
+
+if [ ${buildPlatform} == 0 ];then
+	buildMethod=&quot;${buildMethod}BuildWindows&quot;
+    finalOutputPath=&quot;${finalOutputPath}/Windows&quot;
+elif [ ${buildPlatform} == 1 ];then
+	buildMethod=&quot;${buildMethod}BuildAndroid&quot;
+    finalOutputPath=&quot;${finalOutputPath}/Android&quot;
+elif [ ${buildPlatform} == 2 ];then
+	buildMethod=&quot;${buildMethod}BuildiOS&quot;
+    finalOutputPath=&quot;${finalOutputPath}/iOS&quot;
+fi
+
+echo &quot;buildMethod=${buildMethod}&quot; &gt;&gt; ${WORKSPACE}/env.properties
+echo &quot;finalOutputPath=${finalOutputPath}&quot; &gt;&gt; ${WORKSPACE}/env.properties
+
+unityLogPath=&quot;${WORKSPACE}/unitybuildlogs&quot;
+
+echo -e &quot;\e[34m unityLogPath:${unityLogPath} \e[0m&quot;
+echo &quot;unityLogPath=${unityLogPath}&quot; &gt;&gt; ${WORKSPACE}/env.properties
+
+if [ ! -d &quot;${unityLogPath}&quot; ];then
+	mkdir &quot;${unityLogPath}&quot;
+fi
+
+echo -e &quot;\e[34m Star Build Unity... \e[0m&quot;
+
+</command>
+    </hudson.tasks.Shell>
+    <EnvInjectBuilder plugin="envinject@2.3.0">
+      <info>
+        <propertiesFilePath>${WORKSPACE}/env.properties</propertiesFilePath>
+      </info>
+    </EnvInjectBuilder>
+    <org.jenkinsci.plugins.unity3d.Unity3dBuilder plugin="unity3d-plugin@1.3">
+      <unity3dName>unity2018.4</unity3dName>
+      <argLine>-projectPath &quot;${projectPath}&quot; -quit -batchmode -executeMethod &quot;${buildMethod}&quot; &quot;buildPlatform|${buildPlatform}&quot; &quot;outputPath|${finalOutputPath}&quot; &quot;buildVersionName|${buildVersionName}&quot; &quot;buildMode|${buildMode}&quot; &quot;enableUnityDevelopment|${enableUnityDevelopment}&quot; &quot;enableExportProject|${enableExportProject}&quot; &quot;enableGameDevelopment|${enableGameDevelopment}&quot; -logFile &quot;${unityLogPath}/${buildVersionName}.txt&quot;</argLine>
+      <unstableReturnCodes></unstableReturnCodes>
+    </org.jenkinsci.plugins.unity3d.Unity3dBuilder>
+    <hudson.tasks.Shell>
+      <command>echo -e &quot;\e[34m Finish Build! \e[0m&quot;</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@0.6.2">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+    <org.jvnet.hudson.tools.versionnumber.VersionNumberBuilder plugin="versionnumber@1.9">
+      <versionNumberString>${JOB_NAME}_${BUILD_DATE_FORMATTED, &quot;yyyyMMdd&quot;}_${BUILDS_TODAY}</versionNumberString>
+      <projectStartDate>2019-11-20 16:00:00.0 UTC</projectStartDate>
+      <environmentVariableName>buildVersionName</environmentVariableName>
+      <environmentPrefixVariable></environmentPrefixVariable>
+      <oBuildsToday></oBuildsToday>
+      <oBuildsThisWeek></oBuildsThisWeek>
+      <oBuildsThisMonth></oBuildsThisMonth>
+      <oBuildsThisYear></oBuildsThisYear>
+      <oBuildsAllTime></oBuildsAllTime>
+      <worstResultForIncrement>SUCCESS</worstResultForIncrement>
+      <skipFailedBuilds>false</skipFailedBuilds>
+      <useAsBuildDisplayName>false</useAsBuildDisplayName>
+    </org.jvnet.hudson.tools.versionnumber.VersionNumberBuilder>
+    <org.jenkinsci.plugins.buildnamesetter.BuildNameSetter plugin="build-name-setter@2.0.3">
+      <template>#${BUILD_NUMBER}_${buildVersionName}</template>
+      <descriptionTemplate></descriptionTemplate>
+      <runAtStart>true</runAtStart>
+      <runAtEnd>true</runAtEnd>
+    </org.jenkinsci.plugins.buildnamesetter.BuildNameSetter>
+  </buildWrappers>
+</project>
