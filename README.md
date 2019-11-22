@@ -29,8 +29,8 @@
 3. git clone 本项目到本地路径中
 
 4. 配置Jenkins项目
-    - 新建一个自由风格的Jenkins项目，记住命令项目名
-    - 找到路径.jenkins/jobs/项目名称/config.xml的文件
+    - 新建一个名为game的自由风格的Jenkins项目
+    - 找到路径.jenkins/jobs/game/config.xml的文件
     > .jenkins在MacOS上位的目录在home目录下即~/.jenkins,Windows的.jenkins目录位置为C:\Users\用户名\.jenkins 下
     - 使用本项目中根目录下的config.xml替换上述文件，并重启jenkins
     - 在jenkins项目的配置中，选择构建，在步骤Invoke Unity3d Editor -> Unity3d installation name 选择之前在Global Tool Configuration中配置好的Unity3d的名字，并保存。

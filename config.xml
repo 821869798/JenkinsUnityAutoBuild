@@ -29,7 +29,7 @@
           <defaultValue>0</defaultValue>
           <multiSelectDelimiter>,</multiSelectDelimiter>
           <descriptionPropertyValue>Windows64,Android,iOS</descriptionPropertyValue>
-          <projectName>p3</projectName>
+          <projectName>game</projectName>
         </com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition>
         <com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition plugin="extended-choice-parameter@0.78">
           <name>buildMode</name>
@@ -42,7 +42,7 @@
           <defaultValue>0</defaultValue>
           <multiSelectDelimiter>,</multiSelectDelimiter>
           <descriptionPropertyValue>全量打包,不打包AssetBundle，直接Build,只重新编译C#代码（不包括lua），不打AssetBundle和场景</descriptionPropertyValue>
-          <projectName>p3</projectName>
+          <projectName>game</projectName>
         </com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition>
         <hudson.model.BooleanParameterDefinition>
           <name>enableUnityDevelopment</name>
@@ -135,7 +135,12 @@ echo -e &quot;\e[34m Star Build Unity... \e[0m&quot;
       <unstableReturnCodes></unstableReturnCodes>
     </org.jenkinsci.plugins.unity3d.Unity3dBuilder>
     <hudson.tasks.Shell>
-      <command>echo -e &quot;\e[34m Finish Build! \e[0m&quot;</command>
+      <command>
+if [ ${buildPlatform} == 2 ];then
+#TODO,xcode 命令行构建
+fi
+
+echo -e &quot;\e[34m Finish Build! \e[0m&quot;</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers/>
