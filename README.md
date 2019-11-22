@@ -23,6 +23,8 @@
 
 2. 配置Unity3d的路径
     - 在 Manage Jenkins -> Global Tool Configuration -> Unity3d 下配置已经装好的Unity目录，目录配置到Editor目录的父目录就可以了，不是Unity.exe所在的目录
+    
+    > 如果是打包Android，需要在用Unity3d创建个项目，设置好Unity3d中的Android SDK目录，并打包一次空工程，这个主要是确认在Unity3d的手动打包Android的环境是没问题的。
 
 3. git clone 本项目到本地路径中
 
