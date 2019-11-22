@@ -17,11 +17,12 @@
     - Version Number
     - Extended Choice Parameter
     - Environment Injector Plugin
+    - AnsiColor
 
     > 提示如果是部署在Windows，需要安装Git基础版，把Git安装目录下的bin目录添加到环境变量中。因为在Windows上用到了shell脚本，环境变量中需要sh.exe来执行shell脚本，Git的bin目录下带了一份
 
 2. 配置Unity3d的路径
-    - 在 Manage Jenkins -> Global Tool Configuration -> unity3d 下配置已经装好的Unity目录，目录配置到Editor目录的父目录就可以了，不是Unity.exe所在的目录
+    - 在 Manage Jenkins -> Global Tool Configuration -> Unity3d 下配置已经装好的Unity目录，目录配置到Editor目录的父目录就可以了，不是Unity.exe所在的目录
 
 3. git clone 本项目到本地路径中
 
@@ -30,6 +31,7 @@
     - 找到路径.jenkins/jobs/项目名称/config.xml的文件
     > .jenkins在MacOS上位的目录在home目录下即~/.jenkins,Windows的.jenkins目录位置为C:\Users\用户名\.jenkins 下
     - 使用本项目中根目录下的config.xml替换上述文件，并重启jenkins
+    - 在jenkins项目的配置中，选择构建，在步骤Invoke Unity3d Editor -> Unity3d installation name 选择之前在Global Tool Configuration中配置好的Unity3d的名字，并保存。
 
 5. 启动打包，输入参数，确认。
     - 在jenkins中打开项目选择 Build with Parameters
