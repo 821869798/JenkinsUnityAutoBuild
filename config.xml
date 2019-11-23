@@ -136,8 +136,9 @@ echo -e &quot;\e[34m Star Build Unity... \e[0m&quot;
     </org.jenkinsci.plugins.unity3d.Unity3dBuilder>
     <hudson.tasks.Shell>
       <command>
-if [ ${buildPlatform} == 2 ];then
 #TODO,xcode 命令行构建
+if [ ${buildPlatform} == 2 ];then
+	echo -e &quot;\e[34m Start Build XCode Project...... \e[0m&quot;
 fi
 
 echo -e &quot;\e[34m Finish Build! \e[0m&quot;</command>

@@ -44,3 +44,22 @@
     - 选择可选参数
     - 开始构建
     - 可以点击Build History，选择左边面板中的控制台输出查看构建过程中的日志
+
+### 关于Windows下Jenkins的控制台输出中文乱码的解决方法
+1. Jenkins-> Manage Jenkins -> Configure System ，在全局属性新建变量
+
+键为：LANG
+
+值为：zh_CN.UTF-8
+
+![jenkins_cn1](Images/jenkins_cn1.png)
+
+2. 添加环境变量
+
+键：JAVA_TOOL_OPTIONS
+
+值：-Dfile.encoding=UTF-8
+
+(别忘了前面的-)
+
+![jenkins_cn2](Images/jenkins_cn2.png)
