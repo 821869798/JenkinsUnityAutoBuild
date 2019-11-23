@@ -63,3 +63,5 @@
 (别忘了前面的-)
 
 ![jenkins_cn2](Images/jenkins_cn2.png)
+
+3. 设置好之后关闭jenkins，也就是关闭启动jenkins的CMD（需要重新载入环境变量），重新开一个CMD启动java -jar jenkins.war
