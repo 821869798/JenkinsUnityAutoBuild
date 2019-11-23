@@ -2,7 +2,7 @@
 
 # 介绍
 > JenkinsUnityAutoBuild 是一套基于Jenkins的Unity3d自动打包框架，Unity代码工程基于Unity2018  
-联系人qq:821869798
+qq:821869798
 ### 支持的特性有
 - 参数化构建
 - 部署多平台支持（可搭建在Windows或MacOS上）
