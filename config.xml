@@ -59,6 +59,24 @@
           <description>Game的开发者模式,指代码的逻辑是开发者模式</description>
           <defaultValue>true</defaultValue>
         </hudson.model.BooleanParameterDefinition>
+        <com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition plugin="extended-choice-parameter@0.78">
+          <name>versionControl</name>
+          <description>版本控制软件</description>
+          <quoteValue>false</quoteValue>
+          <saveJSONParameterToFile>false</saveJSONParameterToFile>
+          <visibleItemCount>2</visibleItemCount>
+          <type>PT_SINGLE_SELECT</type>
+          <value>0,1</value>
+          <defaultValue>0</defaultValue>
+          <multiSelectDelimiter>,</multiSelectDelimiter>
+          <descriptionPropertyValue>Git(需要安装Git),SVN(需要安装SVN，并有SVN命令可用)</descriptionPropertyValue>
+          <projectName>game</projectName>
+        </com.cwctravel.hudson.plugins.extended__choice__parameter.ExtendedChoiceParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>enableProjectUpdate</name>
+          <description>使用Git或者SVN更新项目</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
   </properties>
@@ -120,6 +138,17 @@ if [ ! -d &quot;${unityLogPath}&quot; ];then
 	mkdir &quot;${unityLogPath}&quot;
 fi
 
+#开始更新版本
+if [ $enableProjectUpdate == true ];then
+	echo -e &quot;\e[34m Star Update Project... \e[0m&quot;
+	if [ $versionControl == 0 ];then
+    	git -C &quot;${projectPath}&quot; pull 
+    elif [ $versionControl == 1 ];then
+    	svn update &quot;${projectPath}&quot;
+	fi
+fi
+
+#开始打包
 echo -e &quot;\e[34m Star Build Unity... \e[0m&quot;
 
 </command>
