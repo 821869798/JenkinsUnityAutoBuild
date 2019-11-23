@@ -14,11 +14,11 @@ qq:821869798
 # 部署
 
 1. 下载jenkins.war,并使用 java -jar jenkins.war启动jenkins，并安装以下插件
-    - Unity3d plugin
+    - Unity3d
     - Build Name and Description Setter
     - Version Number
     - Extended Choice Parameter
-    - Environment Injector Plugin
+    - Environment Injector
     - AnsiColor
 
     > 提示如果是部署在Windows，需要安装Git基础版，把Git安装目录下的bin目录添加到环境变量中。因为在Windows上用到了shell脚本，环境变量中需要sh.exe来执行shell脚本，Git的bin目录下带了一份
