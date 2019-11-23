@@ -89,26 +89,35 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>echo &quot;Build Start......&quot;
+      <command>#前置初始化，让终端输出颜色,兼容MacOS和Windows和Linux
+
+sysname=$(uname)
+echoarg=&quot;-e&quot;
+if [ ${sysname} == &quot;Darwin&quot; ];then
+	echoarg=&quot;&quot;
+fi
+
+
+echo ${echoarg} &quot;\033[1;34m Build Start...... \033[0m&quot;
 
 #清空上次环境变量的文件
 :&gt; ${WORKSPACE}/env.properties
 
-echo -e &quot;\e[34m buildPlatform:${buildPlatform} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m buildPlatform:${buildPlatform} \033[0m&quot;
 
-echo -e &quot;\e[34m projectPath:${projectPath} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m projectPath:${projectPath} \033[0m&quot;
 
-echo -e &quot;\e[34m outputPath:${outputPath} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m outputPath:${outputPath} \033[0m&quot;
 
-echo -e &quot;\e[34m buildVersionName:${buildVersionName} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m buildVersionName:${buildVersionName} \033[0m&quot;
 
-echo -e &quot;\e[34m buildMode:${buildMode} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m buildMode:${buildMode} \033[0m&quot;
 
-echo -e &quot;\e[34m enableUnityDevelopment:${enableUnityDevelopment} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m enableUnityDevelopment:${enableUnityDevelopment} \033[0m&quot;
 
-echo -e &quot;\e[34m enableExportProject:${enableExportProject} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m enableExportProject:${enableExportProject} \033[0m&quot;
 
-echo -e &quot;\e[34m enableGameDevelopment:${enableGameDevelopment} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m enableGameDevelopment:${enableGameDevelopment} \033[0m&quot;
 
 #在Unity中执行的函数
 buildMethod=&quot;AutoBuild.AutoBuildEntry.&quot;
@@ -131,7 +140,7 @@ echo &quot;finalOutputPath=${finalOutputPath}&quot; &gt;&gt; ${WORKSPACE}/env.pr
 
 unityLogPath=&quot;${WORKSPACE}/unitybuildlogs&quot;
 
-echo -e &quot;\e[34m unityLogPath:${unityLogPath} \e[0m&quot;
+echo ${echoarg} &quot;\033[1;34m unityLogPath:${unityLogPath} \033[0m&quot;
 echo &quot;unityLogPath=${unityLogPath}&quot; &gt;&gt; ${WORKSPACE}/env.properties
 
 if [ ! -d &quot;${unityLogPath}&quot; ];then
@@ -140,7 +149,7 @@ fi
 
 #开始更新版本
 if [ $enableProjectUpdate == true ];then
-	echo -e &quot;\e[34m Star Update Project... \e[0m&quot;
+	echo ${echoarg} &quot;\033[1;34m Star Update Project... \033[0m&quot;
 	if [ $versionControl == 0 ];then
     	git -C &quot;${projectPath}&quot; pull 
     elif [ $versionControl == 1 ];then
@@ -148,8 +157,8 @@ if [ $enableProjectUpdate == true ];then
 	fi
 fi
 
-#开始打包
-echo -e &quot;\e[34m Star Build Unity... \e[0m&quot;
+#开始调用Unity打包
+echo ${echoarg} &quot;\033[1;34m Star Build Unity... \033[0m&quot;
 
 </command>
     </hudson.tasks.Shell>
@@ -164,13 +173,20 @@ echo -e &quot;\e[34m Star Build Unity... \e[0m&quot;
       <unstableReturnCodes></unstableReturnCodes>
     </org.jenkinsci.plugins.unity3d.Unity3dBuilder>
     <hudson.tasks.Shell>
-      <command>
-#TODO,xcode 命令行构建
-if [ ${buildPlatform} == 2 ];then
-	echo -e &quot;\e[34m Start Build XCode Project...... \e[0m&quot;
+      <command>#前置初始化，让终端输出颜色,兼容MacOS和Windows和Linux
+
+sysname=$(uname)
+echoarg=&quot;-e&quot;
+if [ ${sysname} == &quot;Darwin&quot; ];then
+	echoarg=&quot;&quot;
 fi
 
-echo -e &quot;\e[34m Finish Build! \e[0m&quot;</command>
+#TODO,xcode 命令行构建
+if [ ${buildPlatform} == 2 ];then
+	echo ${echoarg} &quot;\033[1;34m Start Build XCode Project...... \033[0m&quot;
+fi
+
+echo ${echoarg} &quot;\033[1;34m Finish Build! \033[0m&quot;</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers/>
