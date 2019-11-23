@@ -24,7 +24,11 @@ qq:821869798
     > 提示如果是部署在Windows，需要安装Git基础版，把Git安装目录下的bin目录添加到环境变量中。因为在Windows上用到了shell脚本，环境变量中需要sh.exe来执行shell脚本，Git的bin目录下带了一份
 
 2. 配置Unity3d的路径
-    - 在 Manage Jenkins -> Global Tool Configuration -> Unity3d 下配置已经装好的Unity目录，Windows目录配置到Editor目录的父目录就可以了，不是Unity.exe所在的目。Maco配置路径到Unity.app就行了。
+    - 在 Manage Jenkins -> Global Tool Configuration -> Unity3d 下配置已经装好的Unity。
+    
+    - Windows目录配置到Editor目录的父目录就可以了，不是Unity.exe所在的目。
+    
+    - MacOS配置路径到Unity.app就行了。
     
     > 如果是打包Android，需要在用Unity3d创建个项目，设置好Unity3d中的Android SDK目录，并打包一次空工程，这个主要是确认在Unity3d的手动打包Android的环境是没问题的。
 
