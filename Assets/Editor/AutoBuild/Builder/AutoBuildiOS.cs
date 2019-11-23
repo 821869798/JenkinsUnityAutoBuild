@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 
 namespace AutoBuild
@@ -21,12 +22,20 @@ namespace AutoBuild
             {
                 return false;
             }
+            buildArgs.enableExportProject = true;       //导出到XCode工程
+            //设置输出路径
+            string finalPathDir = Path.Combine(buildArgs.outputPath, buildArgs.buildVersionName);
+            if (!Directory.Exists(finalPathDir))
+            {
+                Directory.CreateDirectory(finalPathDir);
+            }
+            buildArgs.outputFinalPath = finalPathDir;
             return true;
         }
 
         public override void StartBuild()
         {
-
+            BuildPipeline.BuildPlayer(GetBuildPlayerOptions(buildArgs));
         }
 
     }
