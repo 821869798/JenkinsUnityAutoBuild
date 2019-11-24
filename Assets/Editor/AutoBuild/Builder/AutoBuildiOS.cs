@@ -25,6 +25,7 @@ namespace AutoBuild
             buildArgs.enableExportProject = true;       //导出到XCode工程
             //设置输出路径
             string finalPathDir = Path.Combine(buildArgs.outputPath, buildArgs.buildVersionName);
+            finalPathDir = Path.Combine(finalPathDir, "xcode_project");
             if (!Directory.Exists(finalPathDir))
             {
                 Directory.CreateDirectory(finalPathDir);
