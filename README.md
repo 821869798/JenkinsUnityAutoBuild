@@ -52,7 +52,7 @@ Jenkins自动打开部署在打包机上，就可以远程全自动打包，不�
 ## 部署jenkins
 
 - [jenkins.war](https://www.jenkins.io/download/) 可以从连接下在jenkins.war包，注意要选择Generic Java package (.war)下载，这个是通用的，不要选Windows版本。
-- jdk环境。**不能使用jdk8，jdk8已经不被jenkins支持，一些插件兼容性也可能有问题。**可以去官网下载最新的jdk21,[Java Downloads | Oracle](https://www.oracle.com/java/technologies/downloads/#java21)
+- jdk环境。**不能使用jdk8，jdk8已经不被jenkins支持，一些插件兼容性也可能有问题** 。 可以去官网下载最新的 jdk21  [Java Downloads | Oracle](https://www.oracle.com/java/technologies/downloads/#java21)
 
 - jdk的bin路径添加到环境变量中
 
