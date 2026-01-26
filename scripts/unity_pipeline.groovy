@@ -33,6 +33,53 @@ def GetUnityExePath() {
   return unityExePath
 }
 
+// 安装 p12 证书并获取 codeSignIdentity
+// 参数: signingParam - XcodeSigningParam 对象，包含 p12FilePath, p12Password
+// 返回: codeSignIdentity 字符串（从 p12 中自动提取）
+def InstallP12AndGetCodeSignIdentity(signingParam) {
+  def p12FilePath = signingParam.p12FilePath
+  def p12Password = signingParam.p12Password
+  def filePrefix = signingParam.filePrefix ?: "default_"
+  
+  // 给shell写入变量值的文件
+  def tempP12Properties = "${filePrefix}p12.properties"
+  
+  // 安装 p12 证书并获取 codeSignIdentity
+  def installP12Shell = """
+  # 导入 p12 证书到 keychain (使用 -A 允许所有应用访问，避免弹窗)
+  security import "${p12FilePath}" -k "${env.HOME}/Library/Keychains/login.keychain-db" -P "${p12Password}" -T /usr/bin/codesign -T /usr/bin/security -A 2>/dev/null || true
+  
+  # 从 p12 中提取证书的 Common Name 作为 codeSignIdentity
+  # 方法1: 使用 openssl 解析 p12 文件（标准模式）
+  P12CodeSignIdentity=\$(openssl pkcs12 -in "${p12FilePath}" -clcerts -nokeys -passin pass:"${p12Password}" 2>/dev/null | openssl x509 -noout -subject -nameopt RFC2253 2>/dev/null | sed -n 's/^.*CN=\\([^,]*\\).*\$/\\1/p')
+  
+  # 方法2: 如果失败，尝试 openssl legacy 模式（openssl 3.x 需要）
+  if [ -z "\${P12CodeSignIdentity}" ]; then
+    echo "Trying openssl with -legacy flag..."
+    P12CodeSignIdentity=\$(openssl pkcs12 -in "${p12FilePath}" -clcerts -nokeys -passin pass:"${p12Password}" -legacy 2>/dev/null | openssl x509 -noout -subject -nameopt RFC2253 2>/dev/null | sed -n 's/^.*CN=\\([^,]*\\).*\$/\\1/p')
+  fi
+  
+  if [ -z "\${P12CodeSignIdentity}" ]; then
+    echo "Error: Failed to extract codeSignIdentity from p12 file!"
+    exit 1
+  fi
+  
+  echo "Extracted codeSignIdentity: \${P12CodeSignIdentity}"
+  echo P12CodeSignIdentity=\${P12CodeSignIdentity} > ${tempP12Properties} || exit 1
+  """
+  def exitCode = CallCmd(installP12Shell)
+  if (exitCode != 0) {
+    error('install p12 certificate failed!')
+  }
+  
+  // 读取从 p12 中提取的 codeSignIdentity
+  def p12Props = readProperties file: tempP12Properties
+  def codeSignIdentity = p12Props.P12CodeSignIdentity
+  echo "Using codeSignIdentity: ${codeSignIdentity}"
+  
+  return codeSignIdentity
+}
+
 // XCode构建ipa的参数
 class XcodeBuildProject {
     String xcodeProjectName
@@ -45,7 +92,10 @@ class XcodeBuildProject {
 class XcodeSigningParam {
     // 这个签名的包的前缀，和别的签名不要重复
     String filePrefix
-    String codeSignIdentity
+    // p12 证书文件路径
+    String p12FilePath
+    // p12 证书密码
+    String p12Password
     String mobileprovisionFilePath
     // app-store, development, enterprise, ad-hoc
     String signingMethod
@@ -59,6 +109,8 @@ pipeline {
   environment {
     Unity2022_DefaultPath = 'C:/Program Files/Unity/Hub/Editor/2022.3.62f1/Editor/Unity.exe'
     Unity2022_DefaultPath_Unix = '/Applications/Unity/Hub/Editor/2022.3.62f1/Unity.app/Contents/MacOS/Unity'
+    // iOS IPA 下载基础URL,替换测试包下载地址，方便内网测试
+    IPA_DOWNLOAD_BASE_URL = 'https://xxx/version'
   }
 
   stages {
@@ -301,6 +353,8 @@ pipeline {
 
               // iOS的特殊目录
               env.iOSIpaOutputPath = finalOutputPath + "/" + buildVersionName;
+              // IPA下载的相对路径（用于生成完整URL）
+              env.iOSIpaRelativePath = "iOS/" + buildVersionName;
               // xcode project path
               finalOutputPath = projectPath + "_xcodeprj";
               env.iOSArchivePath = projectPath + "_xcode_archive";
@@ -363,6 +417,10 @@ pipeline {
           def XcodeBuildIpaFunction = { XcodeBuildProject xcodeProject, XcodeSigningParam signingParam ->
             def mobileprovisionFilePath = signingParam.mobileprovisionFilePath;
             def signingMethod = signingParam.signingMethod;
+            
+            // 安装 p12 并获取 codeSignIdentity
+            def codeSignIdentity = InstallP12AndGetCodeSignIdentity(signingParam)
+            
             // 给shell写入变量值的文件
             def tempXcodeProperties = 'xcode.properties'
             def shellScripts = """
@@ -374,6 +432,7 @@ pipeline {
             echo CurrentBundleId=\${CurrentBundleId} >> ${tempXcodeProperties} || exit 1
             echo CurrentDevelopmentTeam=\${CurrentDevelopmentTeam} >> ${tempXcodeProperties} || exit 1
             # 安装mobileprovision文件
+            mkdir -p "${env.HOME}/Library/MobileDevice/Provisioning Profiles/" || exit 1
             cp "${mobileprovisionFilePath}" "${env.HOME}/Library/MobileDevice/Provisioning Profiles/\${CurrentUUID}.mobileprovision" || exit 1
             """
             def exitCode = CallCmd(shellScripts)
@@ -408,7 +467,7 @@ pipeline {
             xcodebuild archive -project "${xcodeProject.xcodeProjectPath}/${xcodeProject.xcodeProjectName}.xcodeproj" \\
               -scheme ${xcodeProject.xcodeProjectName} -sdk iphoneos -configuration Release \\
               -archivePath "${xcodeProject.archivePath}/${signingParam.filePrefix}${xcodeProject.xcodeProjectName}.xcarchive" \\
-              CODE_SIGN_IDENTITY="${signingParam.codeSignIdentity}" PROVISIONING_PROFILE_APP="${xcodeProps.CurrentUUID}" \\
+              CODE_SIGN_IDENTITY="${codeSignIdentity}" PROVISIONING_PROFILE_APP="${xcodeProps.CurrentUUID}" \\
               PRODUCT_BUNDLE_IDENTIFIER_APP="${xcodeProps.CurrentBundleId}" DEVELOPMENT_TEAM="${xcodeProps.CurrentDevelopmentTeam}" CODE_SIGN_STYLE=Manual || exit 1
 
             # export ipa
@@ -420,6 +479,14 @@ pipeline {
             iOSProductName=\$(basename "\$(find '${xcodeProject.archivePath}/${signingParam.filePrefix}${xcodeProject.xcodeProjectName}.xcarchive/Products/Applications' -name '*.app' | head -1 )" .app)
             iOSIpaName="${signingParam.filePrefix}\${iOSProductName}"
             mv "${xcodeProject.ipaOutputPath}/\${iOSProductName}.ipa" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.ipa" || exit 1
+            
+            # 生成 itms-services 安装用的 manifest plist 文件（从模板复制）
+            cp "${env.WORKSPACE}/tools/manifest_template.plist" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist" || exit 1
+            # 替换plist中的占位符
+            sed -i '' "s|__BUNDLE_ID__|${xcodeProps.CurrentBundleId}|g" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist"
+            sed -i '' "s|__TITLE__|\${iOSProductName}|g" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist"
+            # 替换IPA下载地址（完整URL）
+            sed -i '' "s|__IPA_URL__|${env.IPA_DOWNLOAD_BASE_URL}/${env.iOSIpaRelativePath}/\${iOSIpaName}.ipa|g" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist"
             
             echo iOSProductName=\${iOSProductName} > ${tempIpaInfoProperties} || exit 1
             echo iOSIpaName=\${iOSIpaName} >> ${tempIpaInfoProperties} || exit 1
@@ -433,31 +500,53 @@ pipeline {
 
           // 创建一个重签名ipa文件
           def ResignIpaFunction = { XcodeBuildProject xcodeProject,XcodeSigningParam signingParam -> 
+            // 安装 p12 并获取 codeSignIdentity
+            def codeSignIdentity = InstallP12AndGetCodeSignIdentity(signingParam)
+            
             def resignShell = """
               echo "Start resign ipa......"
               source ${tempIpaInfoProperties}
+              
+              # 获取重签名使用的mobileprovision的UUID
+              ResignUUID=`/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< \$(security cms -D -i ${signingParam.mobileprovisionFilePath})` || exit 1
+              
+              # 安装mobileprovision文件
+              mkdir -p "${env.HOME}/Library/MobileDevice/Provisioning Profiles/" || exit 1
+              cp "${signingParam.mobileprovisionFilePath}" "${env.HOME}/Library/MobileDevice/Provisioning Profiles/\${ResignUUID}.mobileprovision" || exit 1
+
+              # 获取重签名使用的mobileprovision的bundle-id
+              ResignBundleId=`/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' /dev/stdin <<< \$(security cms -D -i ${signingParam.mobileprovisionFilePath}) | cut -d '.' -f2-` || exit 1
+              
     	        /bin/bash ${env.WORKSPACE}/tools/resign.sh \\
-                -s "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.ipa" -c "${signingParam.codeSignIdentity}" \\
+                -s "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.ipa" -c "${codeSignIdentity}" \\
                 -p ${signingParam.mobileprovisionFilePath} || exit 1
               ipaResignOutput="${xcodeProject.ipaOutputPath}/${signingParam.filePrefix}\${iOSProductName}.ipa"
               mv "${xcodeProject.ipaOutputPath}/\${iOSProductName}-resign.ipa" "\${ipaResignOutput}" || exit 1
+              
+              # 生成 itms-services 安装用的 manifest plist 文件（从模板复制）
+              ipaResignPlist="${xcodeProject.ipaOutputPath}/${signingParam.filePrefix}\${iOSProductName}.plist"
+              cp "${env.WORKSPACE}/tools/manifest_template.plist" "\${ipaResignPlist}" || exit 1
+              # 替换plist中的占位符
+              sed -i '' "s|__BUNDLE_ID__|\${ResignBundleId}|g" "\${ipaResignPlist}"
+              sed -i '' "s|__TITLE__|\${iOSProductName}|g" "\${ipaResignPlist}"
+              # 替换IPA下载地址（完整URL）
+              sed -i '' "s|__IPA_URL__|${env.IPA_DOWNLOAD_BASE_URL}/${env.iOSIpaRelativePath}/${signingParam.filePrefix}\${iOSProductName}.ipa|g" "\${ipaResignPlist}"
             """
-            def exitCode = CallCmd(resignShell)
+            exitCode = CallCmd(resignShell)
             if (exitCode != 0) {
               error("ipa resgin failed: ${signingParam.filePrefix} !")
             }
           }
 
-          // 读取证书的yaml配置
-          def iOSYamlText = readFile(file: "${env.WORKSPACE}/iOSSigningConfig.yaml")   
-          // 将JSON字符串反序列化为Groovy对象
-          def iOSSigningConfig = readYaml text: iOSYamlText
+          // 读取证书的toml配置
+          def iOSSigningConfig = readTOML file: "${env.WORKSPACE}/iOSSigningConfig.toml"
           def signingRootPath = "${env.WORKSPACE}"
 
           // 可用的证书map集合
           def xcodeSigningMap = [:]
           iOSSigningConfig.signings.each { key, value ->
             value.mobileprovisionFilePath = "${signingRootPath}/${value.mobileprovisionFilePath}"
+            value.p12FilePath = "${signingRootPath}/${value.p12FilePath}"
             xcodeSigningMap[key] = value
           }
 
@@ -488,7 +577,7 @@ pipeline {
           List signingList = params.iOSSigningType.tokenize(',')
           def count = 0
           signingList.each { String signingType ->
-            def signingParam = xcodeSigningMap.get(signingType.toInteger())
+            def signingParam = xcodeSigningMap.get(signingType)
             if (signingParam == null) {
               error("iOS Signing Type not found:${signingType}")
             }

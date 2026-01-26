@@ -23,6 +23,7 @@ def credentialsId = dsl_credentialsId
 // 从 Pipeline 传递过来的 Jenkins 项目 SCM 信息
 def jenkinsScmUrl = dsl_jenkinsScmUrl ?: 'https://github.com/821869798/JenkinsUnityAutoBuild.git'
 def jenkinsScmBranch = dsl_jenkinsScmBranch ?: 'main'
+
 def jenkinsScmCredentialsId = dsl_jenkinsScmCredentialsId
 
 // 创建文件夹（基于父文件夹路径）
@@ -46,7 +47,7 @@ projects.each { project ->
         
         //job parameters
         parameters {
-            stringParam('credentialsId', "${credentialsId}", 'Jenkins凭据ID（用于Git/SVN认证）')
+            stringParam('credentialsId', "${credentialsId}", 'Jenkins凭据ID(用于Git/SVN认证)')
             stringParam('projectPath', "${defaultWorkPath}/${project.name}", '打包项目所在的目录，不存在通过url拉取')
             stringParam('outputPath', "${defaultOutputPath}", '打包的输出目录')
             

@@ -1,0 +1,21 @@
+# jenkins中有3个CheckBox选项，1:对应appstore包，2:对应development包 3:对应企业证书包。 可以缺省，但是jenkins里不要选
+# 这里我是只有一个ad-hoc证书，来代替1,2了。
+# codeSignIdentity 会自动从 p12 证书中提取，无需手动配置
+
+[signings]
+
+[signings.1]
+# 自定义ipa包的文件前缀
+filePrefix = "appstore_"
+p12FilePath = "iOS_Signing/test_ad-hoc.p12"
+p12Password = "123456"
+mobileprovisionFilePath = "iOS_Signing/test_ad-hoc.mobileprovision"
+# 根据证书来写，app-store, development, enterprise, ad-hoc
+signingMethod = "development"
+
+[signings.2]
+filePrefix = "dev_"
+p12FilePath = "iOS_Signing/test_ad-hoc.p12"
+p12Password = "123456"
+mobileprovisionFilePath = "iOS_Signing/test_ad-hoc.mobileprovision"
+signingMethod = "development"

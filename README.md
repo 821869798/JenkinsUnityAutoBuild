@@ -190,45 +190,58 @@ value: 根据自己电脑的Unity.exe所在目录填写。Windows写到`Unity.ex
 
 - 安装XCode
 - 安装Xcode Command Line，可以在命令行中输入`xcode-select --install` 的方式安装
-- 安装p12证书
-- 有对应mobileprovision证书描述文件，至少1个。类型有app-store, development, enterprise, ad-hoc
+- 有对应p12证书和密码，以及mobileprovision证书描述文件，至少1个。类型有app-store, development, enterprise, ad-hoc
 
 ### 证书索引配置
 
-示例工程中，有个`iOSSigningConfig.yaml`文件，其中就是配置你存在的mobileprovision证书描述文件供打包使用。其中`unity_pipeline.groovy`代码有这个一句读取配置文件的代码
+仓库根目录有个 `iOSSigningConfig.toml` 文件，用于配置 iOS 签名证书信息。`unity_pipeline.groovy` 中通过以下代码读取配置：
 
 ```groovy
-def iOSYamlText = readFile(file: "${projectPath}/Tools/AutoBuild/iOSSigningConfig.yaml") 
+def iOSSigningConfig = readTOML file: "${env.WORKSPACE}/iOSSigningConfig.toml"
 ```
 
-仓库中也有`iOSSigningConfig.yaml`示例文件，请使用自己的证书信息替换这些配置信息，`test_ad-hoc.mobileprovision`可以删除掉。
+
+> 请使用自己的证书信息替换示例配置，`test_ad-hoc.mobileprovision` 和 `test_ad-hoc.p12` 可以删除掉，不要使用示例证书。
+
 文件的示例内容如下：
 
-```yaml
+```toml
 # jenkins中有3个CheckBox选项，1:对应appstore包，2:对应development包 3:对应企业证书包。 可以缺省，但是jenkins里不要选
 # 这里我是只有一个ad-hoc证书，来代替1,2了。
-signings:
-  1:
-    # 自定义ipa包的文件前缀
-    filePrefix: "appstore_"
-    codeSignIdentity: "Apple Distribution: Yueyang Yuncai Engineering Labor Service Co., Ltd (LD9X6CBJK2)"
-    mobileprovisionFilePath: "iOS_Signing/test_ad-hoc.mobileprovision"
-    # 根据证书来写，app-store, development, enterprise, ad-hoc
-    signingMethod: ad-hoc
-  2:
-    filePrefix: "dev_"
-    codeSignIdentity: "Apple Distribution: Yueyang Yuncai Engineering Labor Service Co., Ltd (LD9X6CBJK2)"
-    mobileprovisionFilePath: "iOS_Signing/test_ad-hoc.mobileprovision"
-    signingMethod: ad-hoc
+# 其余的比如codeSignIdentity，和BundleId都会自动从证书中提取，非常省心简单就能配置一套自动出包ipa系统
+
+[signings]
+
+[signings.1]
+# 自定义ipa包的文件前缀
+filePrefix = "appstore_"
+p12FilePath = "iOS_Signing/test_ad-hoc.p12"
+p12Password = "123456"
+mobileprovisionFilePath = "iOS_Signing/test_ad-hoc.mobileprovision"
+# 根据证书来写，app-store, development, enterprise, ad-hoc
+signingMethod = "development"
+
+[signings.2]
+filePrefix = "dev_"
+p12FilePath = "iOS_Signing/test_ad-hoc.p12"
+p12Password = "123456"
+mobileprovisionFilePath = "iOS_Signing/test_ad-hoc.mobileprovision"
+signingMethod = "development"
 ```
 
-该配置文件可以放在工程里，然后可以选择证书描述文件(mobileprovision)是放在工程里的，还是放在远程仓库中的，如果放在远程仓库的，每次打包会拉取下来。
+配置字段说明：
+- `filePrefix`: 自定义 ipa 包的文件前缀
+- `p12FilePath`: p12 证书文件路径（相对于仓库根目录）
+- `p12Password`: p12 证书密码
+- `mobileprovisionFilePath`: mobileprovision 描述文件路径（相对于仓库根目录）
+- `signingMethod`: 签名方式，可选值 `app-store`, `development`, `enterprise`, `ad-hoc`
 
-`signings`字段的1、2、3对应的是jenkins的打包的iOS证书类型选项。
+> **注意**: `codeSignIdentity` 已无需手动配置，打包时会自动从 p12 证书中提取。
 
-如果是第一次用该证书打包，会出现codesign弹框卡住要求输入密码，可以输入后选择始终允许，之后就不会卡住，一口气无人值守打完ipa包。
+`signings` 下的 `1`、`2`、`3` 对应的是 Jenkins 打包界面的 iOS 证书类型选项。
 
-打包建议，可以勾选使用重签加速打包，第一个包是正式打包(一般是app-store类型的包)。然后测试包用重签快速出ipa，大幅提升出多个ipa的速度。
+
+打包建议：可以勾选使用重签加速打包，第一个包是正式打包（一般是 app-store 类型的包），然后测试包用重签快速出 ipa，大幅提升出多个 ipa 的速度。
 
 ### 其他注意
 
