@@ -127,7 +127,7 @@ projects.each { project ->
                 }
             }
             
-            stringParam('versionNumber', '1.0.0.0', '打包版本(前三位为app版本,最后一位资源)')
+            stringParam('versionNumber', '0.1.0.0', '打包版本(前三位为app版本,最后一位资源)')
             stringParam('iOSBundleVersion', '0', 'iOS构建版本号(数字)')
             
             // iOSSigningType - Extended Choice 参数（多选）

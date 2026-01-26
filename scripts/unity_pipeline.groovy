@@ -42,7 +42,7 @@ def InstallP12AndGetCodeSignIdentity(signingParam) {
   def filePrefix = signingParam.filePrefix ?: "default_"
   
   // 给shell写入变量值的文件
-  def tempP12Properties = "${filePrefix}p12.properties"
+  def tempP12Properties = "${env.WORKSPACE}/${env.TEMP_PROPERTIES_DIR}/${filePrefix}p12.properties"
   
   // 安装 p12 证书并获取 codeSignIdentity
   def installP12Shell = """
@@ -80,6 +80,63 @@ def InstallP12AndGetCodeSignIdentity(signingParam) {
   return codeSignIdentity
 }
 
+// 从 mobileprovision 文件中获取签名方法
+// 参数: mobileprovisionFilePath - mobileprovision 文件路径
+// 返回: signingMethod 字符串（app-store, development, enterprise, ad-hoc）
+def GetSigningMethodFromMobileprovision(mobileprovisionFilePath) {
+  def tempSigningMethodProperties = "${env.WORKSPACE}/${env.TEMP_PROPERTIES_DIR}/signingMethod.properties"
+  
+  def getSigningMethodShell = """
+  # 解析 mobileprovision 文件获取签名方法（隐藏 plist 内容输出）
+  set +x
+  PLIST_CONTENT=\$(security cms -D -i "${mobileprovisionFilePath}" 2>/dev/null)
+  set -x
+  
+  # 检查是否为企业证书 (ProvisionsAllDevices = true)
+  PROVISIONS_ALL_DEVICES=\$(/usr/libexec/PlistBuddy -c 'Print ProvisionsAllDevices' /dev/stdin <<< "\${PLIST_CONTENT}" 2>/dev/null || echo "false")
+  
+  # 检查是否有设备列表 (ProvisionedDevices) - 只检测命令是否成功
+  if /usr/libexec/PlistBuddy -c 'Print ProvisionedDevices' /dev/stdin <<< "\${PLIST_CONTENT}" >/dev/null 2>&1; then
+    HAS_DEVICES="true"
+  else
+    HAS_DEVICES="false"
+  fi
+  
+  # 检查 get-task-allow (development 模式)
+  GET_TASK_ALLOW=\$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' /dev/stdin <<< "\${PLIST_CONTENT}" 2>/dev/null || echo "false")
+  
+  echo "PROVISIONS_ALL_DEVICES=\${PROVISIONS_ALL_DEVICES}, HAS_DEVICES=\${HAS_DEVICES}, GET_TASK_ALLOW=\${GET_TASK_ALLOW}"
+  
+  # 判断签名方法
+  if [ "\${PROVISIONS_ALL_DEVICES}" = "true" ]; then
+    SIGNING_METHOD="enterprise"
+  elif [ "\${HAS_DEVICES}" = "true" ]; then
+    if [ "\${GET_TASK_ALLOW}" = "true" ]; then
+      SIGNING_METHOD="development"
+    else
+      SIGNING_METHOD="ad-hoc"
+    fi
+  else
+    SIGNING_METHOD="app-store"
+  fi
+  
+  echo "Detected signingMethod: \${SIGNING_METHOD}"
+  echo SigningMethod=\${SIGNING_METHOD} > ${tempSigningMethodProperties} || exit 1
+  """
+  
+  def exitCode = CallCmd(getSigningMethodShell)
+  if (exitCode != 0) {
+    error('get signing method from mobileprovision failed!')
+  }
+  
+  // 读取签名方法
+  def signingMethodProps = readProperties file: tempSigningMethodProperties
+  def signingMethod = signingMethodProps.SigningMethod
+  echo "Using signingMethod: ${signingMethod}"
+  
+  return signingMethod
+}
+
 // XCode构建ipa的参数
 class XcodeBuildProject {
     String xcodeProjectName
@@ -97,8 +154,6 @@ class XcodeSigningParam {
     // p12 证书密码
     String p12Password
     String mobileprovisionFilePath
-    // app-store, development, enterprise, ad-hoc
-    String signingMethod
 }
 
 
@@ -111,6 +166,8 @@ pipeline {
     Unity2022_DefaultPath_Unix = '/Applications/Unity/Hub/Editor/2022.3.62f1/Unity.app/Contents/MacOS/Unity'
     // iOS IPA 下载基础URL,替换测试包下载地址，方便内网测试
     IPA_DOWNLOAD_BASE_URL = 'https://xxx/version'
+    // 临时 properties 文件目录
+    TEMP_PROPERTIES_DIR = 'temp_properties'
   }
 
   stages {
@@ -137,6 +194,14 @@ pipeline {
           echo "Resolved projectPath: ${env.projectPath}"
           echo "Resolved unityProjectPath: ${env.unityProjectPath}"
           echo "Resolved outputPath: ${env.outputPath}"
+          
+          // 创建临时 properties 目录
+          def tempPropertiesDir = "${env.WORKSPACE}/${env.TEMP_PROPERTIES_DIR}"
+          if (isUnix()) {
+            sh "mkdir -p '${tempPropertiesDir}'"
+          } else {
+            bat "if not exist \"${tempPropertiesDir}\" mkdir \"${tempPropertiesDir}\""
+          }
         }
       }
     }
@@ -411,18 +476,20 @@ pipeline {
         script {
 
           // 写入ipa信息
-          def tempIpaInfoProperties = 'xcode_ipa.properties'
+          def tempIpaInfoProperties = "${env.WORKSPACE}/${env.TEMP_PROPERTIES_DIR}/xcode_ipa.properties"
 
           // Xcode ipa构建
           def XcodeBuildIpaFunction = { XcodeBuildProject xcodeProject, XcodeSigningParam signingParam ->
             def mobileprovisionFilePath = signingParam.mobileprovisionFilePath;
-            def signingMethod = signingParam.signingMethod;
             
             // 安装 p12 并获取 codeSignIdentity
             def codeSignIdentity = InstallP12AndGetCodeSignIdentity(signingParam)
             
+            // 自动从 mobileprovision 获取签名方法
+            def signingMethod = GetSigningMethodFromMobileprovision(mobileprovisionFilePath)
+            
             // 给shell写入变量值的文件
-            def tempXcodeProperties = 'xcode.properties'
+            def tempXcodeProperties = "${env.WORKSPACE}/${env.TEMP_PROPERTIES_DIR}/xcode.properties"
             def shellScripts = """
             # 获取mobileprovision的uuid和包名
             CurrentUUID=`/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<< \$(security cms -D -i ${mobileprovisionFilePath})` || exit 1

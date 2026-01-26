@@ -208,7 +208,8 @@ def iOSSigningConfig = readTOML file: "${env.WORKSPACE}/iOSSigningConfig.toml"
 ```toml
 # jenkins中有3个CheckBox选项，1:对应appstore包，2:对应development包 3:对应企业证书包。 可以缺省，但是jenkins里不要选
 # 这里我是只有一个ad-hoc证书，来代替1,2了。
-# 其余的比如codeSignIdentity，和BundleId都会自动从证书中提取，非常省心简单就能配置一套自动出包ipa系统
+# codeSignIdentity 会自动从 p12 证书中提取，无需手动配置
+# signingMethod 会自动从 mobileprovision 文件中提取，无需手动配置。app-store, development, enterprise, ad-hoc
 
 [signings]
 
@@ -218,15 +219,12 @@ filePrefix = "appstore_"
 p12FilePath = "iOS_Signing/test_ad-hoc.p12"
 p12Password = "123456"
 mobileprovisionFilePath = "iOS_Signing/test_ad-hoc.mobileprovision"
-# 根据证书来写，app-store, development, enterprise, ad-hoc
-signingMethod = "development"
 
 [signings.2]
 filePrefix = "dev_"
 p12FilePath = "iOS_Signing/test_ad-hoc.p12"
 p12Password = "123456"
 mobileprovisionFilePath = "iOS_Signing/test_ad-hoc.mobileprovision"
-signingMethod = "development"
 ```
 
 配置字段说明：
@@ -234,9 +232,8 @@ signingMethod = "development"
 - `p12FilePath`: p12 证书文件路径（相对于仓库根目录）
 - `p12Password`: p12 证书密码
 - `mobileprovisionFilePath`: mobileprovision 描述文件路径（相对于仓库根目录）
-- `signingMethod`: 签名方式，可选值 `app-store`, `development`, `enterprise`, `ad-hoc`
 
-> **注意**: `codeSignIdentity` 已无需手动配置，打包时会自动从 p12 证书中提取。
+> **注意**: `codeSignIdentity` 和 `signingMethod` 均无需手动配置，打包时会自动从证书文件中提取。
 
 `signings` 下的 `1`、`2`、`3` 对应的是 Jenkins 打包界面的 iOS 证书类型选项。
 
