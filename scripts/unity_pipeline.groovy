@@ -164,8 +164,12 @@ pipeline {
   environment {
     Unity2022_DefaultPath = 'C:/Program Files/Unity/Hub/Editor/2022.3.62f1/Editor/Unity.exe'
     Unity2022_DefaultPath_Unix = '/Applications/Unity/Hub/Editor/2022.3.62f1/Unity.app/Contents/MacOS/Unity'
-    // iOS IPA 下载基础URL,替换测试包下载地址，方便内网测试
-    IPA_DOWNLOAD_BASE_URL = 'https://xxx/version'
+    // 打包服务器基础URL，替换成实际的HTTP File Server
+    PACKAGE_SERVER_BASE_URL = 'https://xxx'
+    // 版本目录路径
+    PACKAGE_VERSION_PATH = 'version'
+    // 飞书通知机器人ID，需要先在Manage Jenkins中的Lark Notice中配置好
+    LARK_ROBOT_ID = ''
     // 临时 properties 文件目录
     TEMP_PROPERTIES_DIR = 'temp_properties'
   }
@@ -174,6 +178,12 @@ pipeline {
     stage('处理路径参数') {
       steps {
         script {
+          // 加载飞书通知模块
+          larkNotify = load "${env.WORKSPACE}/scripts/utility/lark_notification.groovy"
+          
+          // 发送构建开始通知
+          larkNotify.sendBuildStart(env.LARK_ROBOT_ID)
+          
           // 处理 ~ 开头的路径，替换为绝对路径
           // Windows路径使用反斜杠，统一转换为正斜杠
           def userHome = isUnix() ? env.HOME : env.USERPROFILE.replace('\\', '/')
@@ -403,12 +413,16 @@ pipeline {
               buildMethod += 'BuildWindows'
               finalOutputPath +=  '/Windows'
               buildTarget = 'Standalone'
+              // 打包下载的相对路径（用于生成完整URL）
+              env.packageRelativePath = "Windows/" + buildVersionName
               break
             case '1':
               //Android
               buildMethod += 'BuildAndroid'
               finalOutputPath += '/Android'
               buildTarget = 'Android'
+              // 打包下载的相对路径（用于生成完整URL）
+              env.packageRelativePath = "Android/" + buildVersionName
               break
             case '2':
               //iOS
@@ -418,8 +432,8 @@ pipeline {
 
               // iOS的特殊目录
               env.iOSIpaOutputPath = finalOutputPath + "/" + buildVersionName;
-              // IPA下载的相对路径（用于生成完整URL）
-              env.iOSIpaRelativePath = "iOS/" + buildVersionName;
+              // 打包下载的相对路径（用于生成完整URL）
+              env.packageRelativePath = "iOS/" + buildVersionName;
               // xcode project path
               finalOutputPath = projectPath + "_xcodeprj";
               env.iOSArchivePath = projectPath + "_xcode_archive";
@@ -553,7 +567,7 @@ pipeline {
             sed -i '' "s|__BUNDLE_ID__|${xcodeProps.CurrentBundleId}|g" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist"
             sed -i '' "s|__TITLE__|\${iOSProductName}|g" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist"
             # 替换IPA下载地址（完整URL）
-            sed -i '' "s|__IPA_URL__|${env.IPA_DOWNLOAD_BASE_URL}/${env.iOSIpaRelativePath}/\${iOSIpaName}.ipa|g" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist"
+            sed -i '' "s|__IPA_URL__|${env.PACKAGE_SERVER_BASE_URL}/${env.PACKAGE_VERSION_PATH}/${env.packageRelativePath}/\${iOSIpaName}.ipa|g" "${xcodeProject.ipaOutputPath}/\${iOSIpaName}.plist"
             
             echo iOSProductName=\${iOSProductName} > ${tempIpaInfoProperties} || exit 1
             echo iOSIpaName=\${iOSIpaName} >> ${tempIpaInfoProperties} || exit 1
@@ -597,7 +611,7 @@ pipeline {
               sed -i '' "s|__BUNDLE_ID__|\${ResignBundleId}|g" "\${ipaResignPlist}"
               sed -i '' "s|__TITLE__|\${iOSProductName}|g" "\${ipaResignPlist}"
               # 替换IPA下载地址（完整URL）
-              sed -i '' "s|__IPA_URL__|${env.IPA_DOWNLOAD_BASE_URL}/${env.iOSIpaRelativePath}/${signingParam.filePrefix}\${iOSProductName}.ipa|g" "\${ipaResignPlist}"
+              sed -i '' "s|__IPA_URL__|${env.PACKAGE_SERVER_BASE_URL}/${env.PACKAGE_VERSION_PATH}/${env.packageRelativePath}/${signingParam.filePrefix}\${iOSProductName}.ipa|g" "\${ipaResignPlist}"
             """
             exitCode = CallCmd(resignShell)
             if (exitCode != 0) {
@@ -663,5 +677,33 @@ pipeline {
 
 	// todo 可以添加打包后stage处理
 
+  }
+
+  // 构建完成后的通知处理
+  post {
+    success {
+      script {
+        // 构建成功时发送飞书通知
+        larkNotify.sendBuildEnd(env.LARK_ROBOT_ID, 'SUCCESS')
+      }
+    }
+    failure {
+      script {
+        // 构建失败时发送飞书通知
+        larkNotify.sendBuildEnd(env.LARK_ROBOT_ID, 'FAILURE')
+      }
+    }
+    aborted {
+      script {
+        // 构建中止时发送飞书通知
+        larkNotify.sendBuildEnd(env.LARK_ROBOT_ID, 'ABORTED')
+      }
+    }
+    unstable {
+      script {
+        // 构建不稳定时发送飞书通知
+        larkNotify.sendBuildEnd(env.LARK_ROBOT_ID, 'UNSTABLE')
+      }
+    }
   }
 }
