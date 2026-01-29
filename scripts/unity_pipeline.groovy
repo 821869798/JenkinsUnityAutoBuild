@@ -411,10 +411,18 @@ pipeline {
             case '0':
               //windows
               buildMethod += 'BuildWindows'
-              finalOutputPath +=  '/Windows'
               buildTarget = 'Standalone'
               // 打包下载的相对路径（用于生成完整URL）
               env.packageRelativePath = "Windows/" + buildVersionName
+              
+              // Windows 的特殊目录（类似 iOS 处理方式）
+              // 先打包到 projectPath 同级的临时目录
+              env.windowsTempBuildPath = projectPath + "_winbuild"
+              // 最终输出目录（保持原来的目录结构）
+              env.windowsFinalOutputPath = finalOutputPath + "/Windows"
+              env.windowsBuildVersionName = buildVersionName
+              // Unity 输出到临时目录
+              finalOutputPath = env.windowsTempBuildPath
               break
             case '1':
               //Android
@@ -488,6 +496,35 @@ pipeline {
       }
       steps {
         script {
+
+          // 尝试解锁 keychain (解决 CodeSign errSecInternalComponent 错误)
+          def keychainCredId = params.keychainCredentialsId
+          if (keychainCredId?.trim()) {
+              // 定义统一的解锁命令，使用环境变变量 KEYCHAIN_PWD
+              def unlockCmd = """
+                # 1. 解锁 Keychain
+                security unlock-keychain -p "\${KEYCHAIN_PWD}" "${env.HOME}/Library/Keychains/login.keychain-db"
+              """
+              try {
+                  // 1. 优先尝试 Username with Password (兼容旧配置/用户习惯)
+                  withCredentials([usernamePassword(credentialsId: keychainCredId, usernameVariable: 'KC_USER', passwordVariable: 'KEYCHAIN_PWD')]) {
+                      CallCmd(unlockCmd)
+                  }
+              } catch (Exception e_user) {
+                  // 2. 如果失败(通常是凭据类型不匹配)，则尝试 Secret Text (纯文本密码)
+                  echo "Try 'Username with password' failed (${e_user.message}), retry with 'Secret text'..."
+                  try {
+                      withCredentials([string(credentialsId: keychainCredId, variable: 'KEYCHAIN_PWD')]) {
+                          CallCmd(unlockCmd)
+                      }
+                  } catch (Exception e_string) {
+                       // 两个都失败了(可能是ID不存在，或者网络问题等)
+                       echo "unlock keychain warning: ${e_string.message}"
+                  }
+              }
+          } else {
+              echo "Skip unlock keychain (keychainCredentialsId is empty)"
+          }
 
           // 写入ipa信息
           def tempIpaInfoProperties = "${env.WORKSPACE}/${env.TEMP_PROPERTIES_DIR}/xcode_ipa.properties"
@@ -675,7 +712,105 @@ pipeline {
       }
     }
 
-	// todo 可以添加打包后stage处理
+    // Windows 打包压缩 stage
+    stage("Windows打包压缩") {
+      when {
+        expression {
+          // 仅在 Windows 平台且 Unity 构建未跳过时执行
+          return !isUnix() && params.buildPlatform == '0' && params.SkipUnityBuild != true
+        }
+      }
+      steps {
+        script {
+          def tempBuildPath = env.windowsTempBuildPath
+          def finalOutputPath = env.windowsFinalOutputPath
+          def buildVersionName = env.windowsBuildVersionName
+          
+          echo "Compressing Windows build..."
+          echo "Source: ${tempBuildPath}"
+          echo "Target: ${finalOutputPath}"
+          
+          // 使用多种方式进行 ZIP 压缩（优先级：7z > tar > PowerShell）
+          // 7z 支持多线程压缩，性能最好
+          def compressScript = """
+            @echo off
+            setlocal enabledelayedexpansion
+            
+            set "FINAL_PATH=${finalOutputPath}"
+            set "TEMP_PATH=${tempBuildPath}"
+            set "ZIP_FILENAME=${buildVersionName}.zip"
+            set "ZIP_FILEPATH=%FINAL_PATH%\\%ZIP_FILENAME%"
+            
+            REM 确保目标目录存在
+            if not exist "%FINAL_PATH%" (
+              mkdir "%FINAL_PATH%"
+            )
+            
+            REM 删除已存在的压缩文件
+            if exist "%ZIP_FILEPATH%" (
+              del /f /q "%ZIP_FILEPATH%"
+            )
+            
+            REM 获取 CPU 核心数用于并行压缩
+            echo Using %NUMBER_OF_PROCESSORS% CPU cores for compression...
+            
+            REM 优先检查 7z 命令（支持多线程压缩）
+            where 7z >nul 2>&1
+            if %ERRORLEVEL% equ 0 (
+              echo Using 7z for multi-threaded ZIP compression...
+              pushd "%TEMP_PATH%"
+              7z a -tzip -mx=5 -mmt=on "%ZIP_FILEPATH%" *
+              set EXIT_CODE=!ERRORLEVEL!
+              popd
+              if !EXIT_CODE! neq 0 (
+                echo ERROR: 7z compression failed!
+                exit /b 1
+              )
+              echo Compression completed: %ZIP_FILEPATH%
+              goto :end
+            )
+            
+            REM 检查 tar 命令（Windows 10+ 自带）
+            where tar >nul 2>&1
+            if %ERRORLEVEL% equ 0 (
+              echo 7z not found, using tar for ZIP compression...
+              pushd "%TEMP_PATH%"
+              tar -a -cf "%ZIP_FILEPATH%" *
+              set EXIT_CODE=!ERRORLEVEL!
+              popd
+              if !EXIT_CODE! neq 0 (
+                echo ERROR: tar compression failed!
+                exit /b 1
+              )
+              echo Compression completed: %ZIP_FILEPATH%
+              goto :end
+            )
+            
+            REM 最后回退到 PowerShell Compress-Archive
+            echo tar not found, using PowerShell Compress-Archive...
+            powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path '%TEMP_PATH%\\*' -DestinationPath '%ZIP_FILEPATH%' -CompressionLevel Optimal -Force"
+            if !ERRORLEVEL! neq 0 (
+              echo ERROR: PowerShell compression failed!
+              exit /b 1
+            )
+            echo Compression completed: %ZIP_FILEPATH%
+            
+            :end
+            REM 可选：清理临时构建目录以节省空间
+            REM rd /s /q "%TEMP_PATH%"
+            
+            endlocal
+          """
+          
+          def exitCode = bat(returnStatus: true, script: compressScript)
+          if (exitCode != 0) {
+            error('Windows build compression failed!')
+          }
+          
+          echo "Windows build compressed successfully to: ${finalOutputPath}/${buildVersionName}.zip"
+        }
+      }
+    }
 
   }
 

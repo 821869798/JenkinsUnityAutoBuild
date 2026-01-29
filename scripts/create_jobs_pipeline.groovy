@@ -6,6 +6,7 @@ pipeline {
         string(name: 'dsl_defaultWorkPath', defaultValue: '~/Documents/JenkinsProject', description: '默认工作目录（项目存放路径）')
         string(name: 'dsl_defaultOutputPath', defaultValue: '~/Documents/JenkinsOutput', description: '默认输出目录（打包输出路径）')
         string(name: 'dsl_credentialsId', defaultValue: '', description: 'Jenkins凭据ID（用于Git/SVN认证）')
+        string(name: 'dsl_keychainCredentialsId', defaultValue: '', description: 'Mac Keychain凭据ID（默认gt, 为空不解锁）')
     }
     stages {
         stage('使用dsl创建jobs') {
@@ -39,7 +40,8 @@ pipeline {
                         dsl_credentialsId: params.dsl_credentialsId,
                         dsl_jenkinsScmUrl: jenkinsScmUrl,
                         dsl_jenkinsScmBranch: jenkinsScmBranch,
-                        dsl_jenkinsScmCredentialsId: credId
+                        dsl_jenkinsScmCredentialsId: credId,
+                        dsl_keychainCredentialsId: params.dsl_keychainCredentialsId
                     ]
                     jobDsl sandbox: true, targets: 'scripts/create_jobs_dsl.groovy', additionalParameters: dslParams
                 }
