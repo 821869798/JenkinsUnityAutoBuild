@@ -796,8 +796,8 @@ pipeline {
             echo Compression completed: %ZIP_FILEPATH%
             
             :end
-            REM 可选：清理临时构建目录以节省空间
-            REM rd /s /q "%TEMP_PATH%"
+            REM 清理临时构建目录
+            rd /s /q "%TEMP_PATH%"
             
             endlocal
           """
