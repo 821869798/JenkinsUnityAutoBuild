@@ -116,7 +116,7 @@ projects.each { project ->
                 script {
                     groovyScript {
                         script {
-                            script('return ["0":"Mono","1":"Il2cppArmFull","2":"AABModeArmFull","3":"Il2cppArmFullAndX86","4":"Il2cpp32","5":"AABModeArmFullAndX86","6":"Il2cppArm64AndX86:selected"]')
+                            script('return ["0":"Mono","1":"Il2cppArmFull","2":"AABModeArmFull","3":"Il2cppArm64","4":"AABModeArm64","5":"Il2cppArm64AndX86_64:selected","6":"AABModeArm64AndX86_64"]')
                             sandbox(true)
                         }
                         fallbackScript {
