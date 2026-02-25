@@ -101,12 +101,34 @@ def sendBuildStart(String robotId) {
   // 构建模式名称
   def buildModeName = getBuildModeName()
   
+  // 获取启动用户
+  def startUser = '未知'
+  def buildCauses = currentBuild.getBuildCauses()
+  for (cause in buildCauses) {
+    if (cause._class?.contains('UserIdCause')) {
+      startUser = cause.userName ?: cause.userId ?: '未知'
+      break
+    } else if (cause._class?.contains('TimerTriggerCause')) {
+      startUser = '定时触发'
+      break
+    } else if (cause._class?.contains('RemoteCause')) {
+      startUser = '远程触发'
+      break
+    } else if (cause._class?.contains('UpstreamCause')) {
+      startUser = "上游任务: ${cause.shortDescription ?: '未知'}"
+      break
+    }
+  }
+  if (startUser == '未知' && buildCauses.size() > 0) {
+    startUser = buildCauses[0].shortDescription ?: '未知'
+  }
+  
   // 构建基础消息内容
   def textContent = [
     "📋 **任务名称**：[${env.JOB_NAME}](${env.JOB_URL})",
     "🔢 **构建编号**：[${currentBuild.displayName}](${env.BUILD_URL})",
+    "👤 **启动用户**：${startUser}",
     "🎯 **构建平台**：${platformName}",
-    "🌟 **构建状态**：<font color='blue'>开始构建</font>",
     "📦 **打包模式**：${buildModeName}",
     "🏷️ **版本号**：${params.versionNumber}"
   ]
