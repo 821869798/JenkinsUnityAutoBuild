@@ -316,13 +316,30 @@ pipeline {
             def isSvn = IsSvnUrl(params.scmUrl)
             
             if (!isSvn) {
+              def scmUrlArray = params.scmUrl.split("\\|")
+              def scmBranch = ''
+              if (scmUrlArray.size() == 2) {
+                scmBranch = scmUrlArray[1]
+              }
+
               // Git 更新逻辑
               def gitUpdateAction = {
-                def cmdArg = """
-                  git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/Assets" || exit 1
-                  git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/ProjectSettings" || exit 1
-                  git -C "${projectPath}" pull || exit 1
-                """
+                def cmdArg = ""
+                if (scmBranch != '') {
+                  cmdArg = """
+                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/Assets" || exit 1
+                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/ProjectSettings" || exit 1
+                    git -C "${projectPath}" fetch || exit 1
+                    git -C "${projectPath}" checkout "${scmBranch}" || exit 1
+                    git -C "${projectPath}" pull || exit 1
+                  """
+                } else {
+                  cmdArg = """
+                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/Assets" || exit 1
+                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/ProjectSettings" || exit 1
+                    git -C "${projectPath}" pull || exit 1
+                  """
+                }
                 echo 'Start update project...'
                 def exitCode = CallCmd(cmdArg)
                 if (exitCode != 0) {
