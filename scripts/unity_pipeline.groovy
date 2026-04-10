@@ -327,16 +327,14 @@ pipeline {
                 def cmdArg = ""
                 if (scmBranch != '') {
                   cmdArg = """
-                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/Assets" || exit 1
-                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/ProjectSettings" || exit 1
+                    git -C "${projectPath}" restore -s HEAD -- . || exit 1
                     git -C "${projectPath}" fetch || exit 1
                     git -C "${projectPath}" checkout "${scmBranch}" || exit 1
                     git -C "${projectPath}" pull || exit 1
                   """
                 } else {
                   cmdArg = """
-                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/Assets" || exit 1
-                    git -C "${projectPath}" restore -s HEAD -- "${unityProjectPath}/ProjectSettings" || exit 1
+                    git -C "${projectPath}" restore -s HEAD -- . || exit 1
                     git -C "${projectPath}" pull || exit 1
                   """
                 }
@@ -364,14 +362,12 @@ pipeline {
                 def cmdArg = ""
                 if (usernameArg && passwordArg) {
                   cmdArg = """
-                    svn revert -R "${unityProjectPath}/Assets" --username ${usernameArg} --password ${passwordArg} --non-interactive || exit 1
-                    svn revert -R "${unityProjectPath}/ProjectSettings" --username ${usernameArg} --password ${passwordArg} --non-interactive || exit 1
+                    svn revert -R "${projectPath}" --username ${usernameArg} --password ${passwordArg} --non-interactive || exit 1
                     svn update "${projectPath}" --username ${usernameArg} --password ${passwordArg} --non-interactive --trust-server-cert || exit 1
                   """
                 } else {
                   cmdArg = """
-                    svn revert -R "${unityProjectPath}/Assets" --non-interactive || exit 1
-                    svn revert -R "${unityProjectPath}/ProjectSettings" --non-interactive || exit 1
+                    svn revert -R "${projectPath}" --non-interactive || exit 1
                     svn update "${projectPath}" --non-interactive --trust-server-cert || exit 1
                   """
                 }
