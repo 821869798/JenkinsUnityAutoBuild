@@ -327,15 +327,16 @@ pipeline {
                 def cmdArg = ""
                 if (scmBranch != '') {
                   cmdArg = """
-                    git -C "${projectPath}" restore -s HEAD -- . || exit 1
-                    git -C "${projectPath}" fetch || exit 1
-                    git -C "${projectPath}" checkout "${scmBranch}" || exit 1
-                    git -C "${projectPath}" pull || exit 1
+                    git -C "${projectPath}" fetch --all || exit 1
+                    git -C "${projectPath}" checkout -f "${scmBranch}" || exit 1
+                    git -C "${projectPath}" reset --hard "origin/${scmBranch}" || exit 1
+                    git -C "${projectPath}" clean -fd || exit 1
                   """
                 } else {
                   cmdArg = """
-                    git -C "${projectPath}" restore -s HEAD -- . || exit 1
-                    git -C "${projectPath}" pull || exit 1
+                    git -C "${projectPath}" fetch --all || exit 1
+                    git -C "${projectPath}" reset --hard @{u} || exit 1
+                    git -C "${projectPath}" clean -fd || exit 1
                   """
                 }
                 echo 'Start update project...'
